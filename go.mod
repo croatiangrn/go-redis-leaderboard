@@ -1,4 +1,4 @@
-module github.com/croatiangr/go-redis-leaderboard
+module github.com/croatiangrn/go-redis-leaderboard
 
 go 1.15
 
