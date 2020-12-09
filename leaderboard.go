@@ -77,7 +77,7 @@ func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mod
 	return &Leaderboard{RedisSettings: redisSettings, AppID: appID, EventType: eventType, MetaData: metaData, redisCli: redisConn, leaderboardName: leaderboardName}, nil
 }
 
-func (l *Leaderboard) RankMember(score int, userID string, withUserInfo bool) (User, error) {
+func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (User, error) {
 	member := &redis.Z{
 		Score:  float64(score),
 		Member: userID,
