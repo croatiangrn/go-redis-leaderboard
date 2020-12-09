@@ -96,8 +96,6 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 		return User{}, err
 	}
 
-	fmt.Println("Rank ::: ", rank)
-
 	u := User{
 		UserID: userID,
 		Score:  score,
@@ -110,6 +108,12 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 	}
 
 	return u, nil
+}
+
+func (l *Leaderboard) UpsertUserInfo(info UserInfo) (UserInfo, error) {
+	
+
+	return info, nil
 }
 
 func (l *Leaderboard) UpsertMemberInfo() {
