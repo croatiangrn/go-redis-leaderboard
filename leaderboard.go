@@ -101,7 +101,7 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 	u := User{
 		UserID: userID,
 		Score:  score,
-		Rank:   int(rank),
+		Rank:   int(rank) + 1,
 		Info:   nil,
 	}
 
