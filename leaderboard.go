@@ -2,6 +2,7 @@ package go_redis_leaderboard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
@@ -31,17 +32,16 @@ var allowedModes = map[string]bool{
 
 // User will be used as a leaderboard item
 type User struct {
-	UserID string    `json:"user_id"`
-	Score  int       `json:"score"`
-	Rank   int       `json:"rank"`
-	Info   *UserInfo `json:"basic_info"`
+	UserID string          `json:"user_id"`
+	Score  int             `json:"score"`
+	Rank   int             `json:"rank"`
+	Info   json.RawMessage `json:"basic_info"`
 }
 
 // UserInfo consists of basic user info such as user id, username, avatar
 type UserInfo struct {
-	UserID     string `json:"user_id"`
-	UserName   string `json:"user_name"`
-	UserAvatar string `json:"user_avatar"`
+	UserID string          `json:"user_id"`
+	Data   json.RawMessage `json:"data"`
 }
 
 type Leaderboard struct {
@@ -111,7 +111,6 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 }
 
 func (l *Leaderboard) UpsertUserInfo(info UserInfo) (UserInfo, error) {
-	
 
 	return info, nil
 }
