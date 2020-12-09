@@ -13,3 +13,15 @@ type UserInfo struct {
 	UserName   string `json:"user_name"`
 	UserAvatar string `json:"user_avatar"`
 }
+
+// RedisSettings stores Host and Password to connect to redis
+type RedisSettings struct {
+	Host     string
+	Password string
+}
+
+type Leaderboard struct {
+	RedisSettings   RedisSettings
+	LeaderboardName string
+}
+
