@@ -96,6 +96,8 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 		return User{}, err
 	}
 
+	fmt.Println("Rank ::: ", rank)
+
 	u := User{
 		UserID: userID,
 		Score:  score,
