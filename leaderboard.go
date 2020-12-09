@@ -22,6 +22,7 @@ type RedisSettings struct {
 
 type Leaderboard struct {
 	RedisSettings   RedisSettings
-	LeaderboardName string
+	AppID           string
+	EventType       string
+	MetaData        string
 }
-
