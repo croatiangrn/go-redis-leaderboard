@@ -13,6 +13,8 @@ const (
 	DevMode        = "dev"
 	StagingMode    = "staging"
 	ProductionMode = "prod"
+
+	UnrankedMember = -1
 )
 
 var ctx = context.Background()
@@ -104,24 +106,35 @@ func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, 
 func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err error) {
 	rank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
-		return User{}, err
+		if !errors.Is(err, redis.Nil) {
+			return User{}, err
+		}
+
+		rank = UnrankedMember
 	}
 
-	score, err := getMemberScore(l.redisCli, l.leaderboardName, userID)
-	if err != nil {
-		return User{}, err
-	}
-
+	var score int
 	var additionalInfo json.RawMessage
-	if withInfo {
-		message, err := l.GetMemberInfo(userID)
-		if err != nil {
+
+	if rank != UnrankedMember {
+		memberScore, scoreErr := getMemberScore(l.redisCli, l.leaderboardName, userID)
+		if scoreErr != nil {
 			if !errors.Is(err, redis.Nil) {
 				return User{}, err
 			}
 		}
-		
-		additionalInfo = message
+
+		score = memberScore
+		if withInfo {
+			message, err := l.GetMemberInfo(userID)
+			if err != nil {
+				if !errors.Is(err, redis.Nil) {
+					return User{}, err
+				}
+			}
+
+			additionalInfo = message
+		}
 	}
 
 	user = User{
