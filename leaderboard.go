@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis/v8"
+	"math"
 	"strconv"
 )
 
@@ -14,7 +16,8 @@ const (
 	StagingMode    = "staging"
 	ProductionMode = "prod"
 
-	UnrankedMember = -1
+	UnrankedMember  = -1
+	DefaultPageSize = 25
 )
 
 var ctx = context.Background()
@@ -29,6 +32,13 @@ var allowedModes = map[string]bool{
 	ProductionMode: true,
 }
 
+var allowedPageSizes = map[int]bool{
+	10:  true,
+	25:  true,
+	50:  true,
+	100: true,
+}
+
 // User will be used as a leaderboard item
 type User struct {
 	UserID         string          `json:"user_id"`
@@ -39,6 +49,7 @@ type User struct {
 
 type Leaderboard struct {
 	RedisSettings    RedisSettings
+	PageSize         int
 	mode             string
 	redisCli         *redis.Client
 	leaderboardName  string
@@ -51,14 +62,18 @@ type Leaderboard struct {
 //
 // uniqueIdentifier is something like table name that will be used to store user info.
 //goland:noinspection GoUnusedExportedFunction
-func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, userInfoStorageHash string) (*Leaderboard, error) {
+func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, userInfoStorageHash string, pageSize int) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
 		mode = DevMode
 	}
 
+	if _, ok := allowedPageSizes[pageSize]; !ok {
+		pageSize = DefaultPageSize
+	}
+
 	// Leaderboard naming convention: "go_leaderboard-<mode>-<appID>-<eventType>-<metaData>"
-	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: leaderboardName, userInfoHashName: userInfoStorageHash}, nil
+	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: leaderboardName, userInfoHashName: userInfoStorageHash, PageSize: pageSize}, nil
 }
 
 // InsertMember inserts member to leaderboard if the member doesn't exist
@@ -173,7 +188,7 @@ func (l *Leaderboard) GetMemberInfo(userID string) (bytes []byte, err error) {
 		return nil, err
 	}
 
-	unquotedText, _ := 	strconv.Unquote(stringifiedData)
+	unquotedText, _ := strconv.Unquote(stringifiedData)
 	raw, err := base64.StdEncoding.DecodeString(unquotedText)
 	if err != nil {
 		return nil, err
@@ -212,6 +227,36 @@ func (l *Leaderboard) TotalMembers() (int, error) {
 	}
 
 	return int(members), nil
+}
+
+func (l *Leaderboard) TotalPages() int {
+	pages := 0
+
+	total, err := l.redisCli.ZCount(ctx, l.leaderboardName, "-inf", "+inf").Result()
+	if err == nil {
+		pages = int(math.Ceil(float64(total) / float64(l.PageSize)))
+	}
+
+	return pages
+}
+
+func (l *Leaderboard) GetLeaders(page int) ([]User, error) {
+	if page < 1 {
+		page = 1
+	}
+
+	if page > l.TotalPages() {
+		page = l.TotalPages()
+	}
+
+	redisIndex := page - 1
+	startOffset := redisIndex * l.PageSize
+	if startOffset < 0 {
+		startOffset = 0
+	}
+	endOffset := (startOffset + l.PageSize) - 1
+
+	return getMembersByRange(l.redisCli, l.leaderboardName, l.PageSize, startOffset, endOffset)
 }
 
 // Returns the rank of member in the sorted set stored at key,
@@ -270,4 +315,16 @@ func incrementMemberScore(redisCli *redis.Client, leaderboardName, userID string
 	}
 
 	return int(res), nil
+}
+
+func getMembersByRange(redisCli *redis.Client, leaderboard string, pageSize int, startOffset int, endOffset int) ([]User, error) {
+	users := make([]User, pageSize)
+
+	values, err := redisCli.ZRevRangeWithScores(ctx, leaderboard, int64(startOffset), int64(endOffset)).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(values)
+	return users, nil
 }
