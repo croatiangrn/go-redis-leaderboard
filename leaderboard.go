@@ -18,10 +18,7 @@ const (
 var ctx = context.Background()
 
 var (
-	ErrAppIDEmpty                       = errors.New("leaderboard: empty app id")
-	ErrEventTypeEmpty                   = errors.New("leaderboard: empty event type")
-	ErrMetadataEmpty                    = errors.New("leaderboard: metadata empty")
-	ErrIncrementByMustBePozitiveInteger = errors.New("leaderboard: incrementBy must be positive integer")
+	ErrIncrementByMustBePositiveInteger = errors.New("leaderboard: incrementBy must be positive integer")
 )
 
 var allowedModes = map[string]bool{
@@ -46,34 +43,19 @@ type UserInfo struct {
 
 type Leaderboard struct {
 	RedisSettings   RedisSettings
-	AppID           string
-	EventType       string
-	MetaData        string
 	mode            string
 	redisCli        *redis.Client
 	leaderboardName string
 }
 
-func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mode, redisLeaderboardNameKey string) (*Leaderboard, error) {
+func NewLeaderboard(redisSettings RedisSettings, mode, redisLeaderboardNameKey string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
 		mode = DevMode
 	}
 
-	if len(appID) == 0 {
-		return nil, ErrAppIDEmpty
-	}
-
-	if len(eventType) == 0 {
-		return nil, ErrEventTypeEmpty
-	}
-
-	if len(metaData) == 0 {
-		return nil, ErrMetadataEmpty
-	}
-
 	// Leaderboard naming convention: "go_leaderboard-<mode>-<appID>-<eventType>-<metaData>"
-	return &Leaderboard{RedisSettings: redisSettings, AppID: appID, EventType: eventType, MetaData: metaData, redisCli: redisConn, leaderboardName: redisLeaderboardNameKey}, nil
+	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: redisLeaderboardNameKey}, nil
 }
 
 // InsertMember inserts member to leaderboard if the member doesn't exist
@@ -213,7 +195,7 @@ func insertMemberScore(redisCli *redis.Client, leaderboardName, userID string, s
 
 func incrementMemberScore(redisCli *redis.Client, leaderboardName, userID string, incrementBy int) (newScore int, err error) {
 	if incrementBy < 0 {
-		return 0, ErrIncrementByMustBePozitiveInteger
+		return 0, ErrIncrementByMustBePositiveInteger
 	}
 
 	res, err := redisCli.ZIncrBy(ctx, leaderboardName, float64(incrementBy), userID).Result()
