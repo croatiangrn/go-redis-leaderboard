@@ -328,7 +328,7 @@ func getMembersByRange(redisCli *redis.Client, leaderboard, userInfoHashName str
 		}
 
 		additionalInfo, err := getMemberInfo(redisCli, userInfoHashName, userID)
-		if err != nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return nil, err
 		}
 
