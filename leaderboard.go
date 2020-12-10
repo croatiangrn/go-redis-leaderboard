@@ -205,6 +205,15 @@ func (l *Leaderboard) UpsertMemberInfo(userID string, additionalData AdditionalU
 	return nil
 }
 
+func (l *Leaderboard) TotalMembers() (int, error) {
+	members, err := l.redisCli.ZCard(ctx, l.leaderboardName).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(members), nil
+}
+
 // Returns the rank of member in the sorted set stored at key,
 // with the scores ordered from high to low starting from one.
 func getMemberRank(redisCli *redis.Client, leaderboardName, userID string) (rank int, err error) {
