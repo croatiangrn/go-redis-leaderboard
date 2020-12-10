@@ -133,7 +133,9 @@ func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err er
 			}
 		}
 
-		additionalInfo = message
+		if err = json.Unmarshal([]byte(message), &additionalInfo); err != nil {
+			return User{}, err
+		}
 	}
 
 	user = User{
@@ -166,17 +168,13 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 	return user, nil
 }
 
-func (l *Leaderboard) GetMemberInfo(userID string) (message json.RawMessage, err error) {
-	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
+func (l *Leaderboard) GetMemberInfo(userID string) (stringifiedData string, err error) {
+	stringifiedData, err = l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if err := json.Unmarshal([]byte(stringifiedData), &message); err != nil {
-		return nil, err
-	}
-
-	return message, nil
+	return stringifiedData, nil
 }
 
 type AdditionalUserInfo json.RawMessage
