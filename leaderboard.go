@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-redis/redis/v8"
 	"math"
@@ -250,21 +249,15 @@ func (l *Leaderboard) GetLeaders(page int) ([]User, error) {
 		page = l.TotalPages()
 	}
 
-	fmt.Println("l.TotalPages() ::: ", l.TotalPages())
-
 	redisIndex := page - 1
 
-	fmt.Println("redisIndex ::: ", redisIndex)
 	startOffset := redisIndex * l.PageSize
-	fmt.Println("startOffset ::: ", startOffset)
 	if startOffset < 0 {
 		startOffset = 0
 	}
-	fmt.Println("startOffset ::: ", startOffset)
 	endOffset := (startOffset + l.PageSize) - 1
-	fmt.Println("endOffset ::: ", endOffset)
 
-	return getMembersByRange(l.redisCli, l.leaderboardName, l.PageSize, startOffset, endOffset)
+	return getMembersByRange(l.redisCli, l.leaderboardName, startOffset, endOffset)
 }
 
 // Returns the rank of member in the sorted set stored at key,
@@ -325,13 +318,13 @@ func incrementMemberScore(redisCli *redis.Client, leaderboardName, userID string
 	return int(res), nil
 }
 
-func getMembersByRange(redisCli *redis.Client, leaderboard string, pageSize int, startOffset int, endOffset int) ([]User, error) {
-	users := make([]User, pageSize)
-
+func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset int, endOffset int) ([]User, error) {
 	values, err := redisCli.ZRevRangeWithScores(ctx, leaderboard, int64(startOffset), int64(endOffset)).Result()
 	if err != nil {
 		return nil, err
 	}
+
+	users := make([]User, len(values))
 
 	for i := range values {
 		userID := values[i].Member.(string)
