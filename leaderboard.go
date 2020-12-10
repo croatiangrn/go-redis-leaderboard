@@ -124,12 +124,12 @@ func (l *Leaderboard) GetMember(userID string) (user User, err error) {
 }
 
 func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user User, err error) {
-	rank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
+	newScore, err := incrementMemberScore(l.redisCli, l.leaderboardName, userID, incrementBy)
 	if err != nil {
 		return User{}, err
 	}
 
-	newScore, err := incrementMemberScore(l.redisCli, l.leaderboardName, userID, incrementBy)
+	rank, err := insertMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
 	}
