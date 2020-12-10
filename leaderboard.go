@@ -7,7 +7,9 @@ import (
 	"errors"
 	"github.com/go-redis/redis/v8"
 	"math"
+	"sort"
 	"strconv"
+	"sync"
 )
 
 const (
@@ -312,39 +314,66 @@ func getMembersByRange(redisCli *redis.Client, leaderboard, userInfoHashName str
 		return nil, err
 	}
 
+	fatalErrors := make(chan error)
+	wgDone := make(chan bool)
+
 	var users []User
+	var wg sync.WaitGroup
 
 	for i := range values {
-		userID := values[i].Member.(string)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			userID := values[i].Member.(string)
 
-		rank, err := getMemberRank(redisCli, leaderboard, userID)
-		if err != nil {
-			return nil, err
-		}
+			rank, err := getMemberRank(redisCli, leaderboard, userID)
+			if err != nil {
+				fatalErrors <- err
+				return
+			}
 
-		score, err := getMemberScore(redisCli, leaderboard, userID)
-		if err != nil {
-			return nil, err
-		}
+			score, err := getMemberScore(redisCli, leaderboard, userID)
+			if err != nil {
+				fatalErrors <- err
+				return
+			}
 
-		additionalInfo, err := getMemberInfo(redisCli, userInfoHashName, userID)
-		if err != nil && !errors.Is(err, redis.Nil) {
-			return nil, err
-		}
+			additionalInfo, err := getMemberInfo(redisCli, userInfoHashName, userID)
+			if err != nil && !errors.Is(err, redis.Nil) {
+				fatalErrors <- err
+				return
+			}
 
-		user := User{
-			UserID:         userID,
-			Score:          score,
-			Rank:           rank,
-			AdditionalInfo: additionalInfo,
-		}
+			user := User{
+				UserID:         userID,
+				Score:          score,
+				Rank:           rank,
+				AdditionalInfo: additionalInfo,
+			}
 
-		users = append(users, user)
+			users = append(users, user)
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(wgDone)
+	}()
+
+	select {
+	case <-wgDone:
+		break
+	case err := <-fatalErrors:
+		return nil, err
 	}
 
 	if len(users) == 0 {
 		users = []User{}
 	}
+
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].Rank < users[j].Rank
+	})
 
 	return users, nil
 }
