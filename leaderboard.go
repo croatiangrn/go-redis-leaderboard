@@ -183,7 +183,12 @@ func (l *Leaderboard) GetMemberInfo(userID string) (info UserInfo, err error) {
 }
 
 func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
-	if _, err := l.redisCli.HSet(ctx, info.UserID, &info).Result(); err != nil {
+	data, err := json.Marshal(&info)
+	if err != nil {
+		return err
+	}
+
+	if _, err := l.redisCli.HSet(ctx, info.UserID, string(data)).Result(); err != nil {
 		return err
 	}
 
