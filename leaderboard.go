@@ -192,7 +192,7 @@ func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
 	fmt.Println("USER ID ::: ", info.UserID)
 	fmt.Println("DATA ::: ", string(data))
 
-	if _, err := l.redisCli.HSet(ctx, info.UserID, string(data)).Result(); err != nil {
+	if _, err := l.redisCli.HMSet(ctx, info.UserID, string(data)).Result(); err != nil {
 		return err
 	}
 
