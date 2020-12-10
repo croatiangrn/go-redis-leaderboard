@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -54,7 +53,8 @@ type Leaderboard struct {
 	leaderboardName string
 }
 
-func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mode string) (*Leaderboard, error) {
+
+func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mode, redisLeaderboardNameKey string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
 		mode = DevMode
@@ -73,11 +73,11 @@ func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mod
 	}
 
 	// Leaderboard naming convention: "go_leaderboard-<mode>-<appID>-<eventType>-<metaData>"
-	leaderboardName := fmt.Sprintf("go_redis_leaderboard-%s-%s-%s-%s", mode, appID, eventType, metaData)
-	return &Leaderboard{RedisSettings: redisSettings, AppID: appID, EventType: eventType, MetaData: metaData, redisCli: redisConn, leaderboardName: leaderboardName}, nil
+	return &Leaderboard{RedisSettings: redisSettings, AppID: appID, EventType: eventType, MetaData: metaData, redisCli: redisConn, leaderboardName: redisLeaderboardNameKey}, nil
 }
 
-func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (User, error) {
+// UpsertMember inserts or updates member in leaderboard given
+func (l *Leaderboard) UpsertMember(userID string, score int) (user User, err error) {
 	member := &redis.Z{
 		Score:  float64(score),
 		Member: userID,
@@ -89,8 +89,6 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 
 	// Returns the rank of member in the sorted set stored at key, with the scores ordered from high to low.
 	// The rank (or index) is 0-based, which means that the member with the highest score has rank 0.
-	//
-	// Use ZRANK to get the rank of an element with the scores ordered from low to high.
 	rank, err := l.redisCli.ZRevRank(ctx, l.leaderboardName, userID).Result()
 	if err != nil {
 		return User{}, err
@@ -103,18 +101,17 @@ func (l *Leaderboard) RankMember(userID string, score int, withUserInfo bool) (U
 		Info:   nil,
 	}
 
-	if withUserInfo {
-		// TODO: Fetch actual user info
-	}
-
 	return u, nil
 }
 
-func (l *Leaderboard) UpsertUserInfo(info UserInfo) (UserInfo, error) {
-
-	return info, nil
+func (l *Leaderboard) GetMember(userID string) (user User, err error) {
+	return
 }
 
-func (l *Leaderboard) UpsertMemberInfo() {
+func (l *Leaderboard) IncrementMemberScore(userID string, score int) (user User, err error) {
+	return
+}
 
+func (l *Leaderboard) UpsertMemberInfo(info UserInfo) (updatedInfo UserInfo, err error) {
+	return
 }
