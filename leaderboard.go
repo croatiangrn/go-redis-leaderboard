@@ -165,16 +165,22 @@ func (l *Leaderboard) GetMemberInfo(userID string) (stringifiedData string, err 
 
 type AdditionalUserInfo json.RawMessage
 
-/*func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
-	return json.Marshal(a)
+func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
+	data, err := json.Marshal(a)
+	return data, err
 }
 
 func (a *AdditionalUserInfo) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, a)
-}*/
+}
 
 func (l *Leaderboard) UpsertMemberInfo(userID string, additionalData AdditionalUserInfo) error {
-	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, userID, additionalData).Result(); err != nil {
+	data, err := json.Marshal(&additionalData)
+	if err != nil {
+		return err
+	}
+
+	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, userID, string(data)).Result(); err != nil {
 		return err
 	}
 
