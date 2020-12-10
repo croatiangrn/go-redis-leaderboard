@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -12,8 +11,6 @@ const (
 	DevMode        = "dev"
 	StagingMode    = "staging"
 	ProductionMode = "prod"
-
-	PageSizeLimit = 100
 )
 
 var ctx = context.Background()
@@ -63,6 +60,7 @@ type Leaderboard struct {
 // IMPORTANT: ``leaderboardName`` and ``uniqueIdentifier`` must be unique project/app wide!
 //
 // uniqueIdentifier is something like table name that will be used to store user info.
+//goland:noinspection GoUnusedExportedFunction
 func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, userInfoStorageHash string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
@@ -189,10 +187,7 @@ func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
 		return err
 	}
 
-	fmt.Println("USER ID ::: ", info.UserID)
-	fmt.Println("DATA ::: ", string(data))
-
-	if _, err := l.redisCli.HMSet(ctx, info.UserID, string(data)).Result(); err != nil {
+	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, info.UserID, string(data)).Result(); err != nil {
 		return err
 	}
 
