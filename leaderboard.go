@@ -163,6 +163,22 @@ func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err er
 	return
 }
 
+func (l *Leaderboard) RemoveMember(userID string) error {
+	if _, err := l.GetMember(userID, false); err != nil {
+		return err
+	}
+
+	if _, err := l.redisCli.ZRem(ctx, l.leaderboardName, userID).Result(); err != nil {
+		return err
+	}
+
+	if _, err := l.redisCli.HDel(ctx, l.userInfoHashName, userID).Result(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user User, err error) {
 	newScore, err := incrementMemberScore(l.redisCli, l.leaderboardName, userID, incrementBy)
 	if err != nil {
