@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-redis/redis/v8"
 	"math"
 	"strconv"
@@ -248,12 +250,19 @@ func (l *Leaderboard) GetLeaders(page int) ([]User, error) {
 		page = l.TotalPages()
 	}
 
+	fmt.Println("l.TotalPages() ::: ", l.TotalPages())
+
 	redisIndex := page - 1
+
+	fmt.Println("redisIndex ::: ", redisIndex)
 	startOffset := redisIndex * l.PageSize
+	fmt.Println("startOffset ::: ", startOffset)
 	if startOffset < 0 {
 		startOffset = 0
 	}
+	fmt.Println("startOffset ::: ", startOffset)
 	endOffset := (startOffset + l.PageSize) - 1
+	fmt.Println("endOffset ::: ", endOffset)
 
 	return getMembersByRange(l.redisCli, l.leaderboardName, l.PageSize, startOffset, endOffset)
 }
@@ -346,6 +355,8 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, pageSize int,
 
 		users = append(users, user)
 	}
+
+	spew.Dump(users)
 
 	return users, nil
 }
