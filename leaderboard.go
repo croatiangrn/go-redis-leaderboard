@@ -29,10 +29,10 @@ var allowedModes = map[string]bool{
 
 // User will be used as a leaderboard item
 type User struct {
-	UserID string          `json:"user_id"`
-	Score  int             `json:"score"`
-	Rank   int             `json:"rank"`
-	Info   json.RawMessage `json:"basic_info"`
+	UserID string   `json:"user_id"`
+	Score  int      `json:"score"`
+	Rank   int      `json:"rank"`
+	Info   UserInfo `json:"basic_info"`
 }
 
 // UserInfo consists of basic user info such as user id, username, avatar
@@ -42,20 +42,26 @@ type UserInfo struct {
 }
 
 type Leaderboard struct {
-	RedisSettings   RedisSettings
-	mode            string
-	redisCli        *redis.Client
-	leaderboardName string
+	RedisSettings    RedisSettings
+	mode             string
+	redisCli         *redis.Client
+	leaderboardName  string
+	userInfoHashName string
 }
 
-func NewLeaderboard(redisSettings RedisSettings, mode, redisLeaderboardNameKey string) (*Leaderboard, error) {
+// NewLeaderboard is constructor for Leaderboard.
+//
+// IMPORTANT: ``leaderboardName`` and ``uniqueIdentifier`` must be unique project/app wide!
+//
+// uniqueIdentifier is something like table name that will be used to store user info.
+func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, uniqueIdentifier string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
 		mode = DevMode
 	}
 
 	// Leaderboard naming convention: "go_leaderboard-<mode>-<appID>-<eventType>-<metaData>"
-	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: redisLeaderboardNameKey}, nil
+	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: leaderboardName, userInfoHashName: uniqueIdentifier}, nil
 }
 
 // InsertMember inserts member to leaderboard if the member doesn't exist
@@ -102,7 +108,7 @@ func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, 
 	return u, nil
 }
 
-func (l *Leaderboard) GetMember(userID string) (user User, err error) {
+func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err error) {
 	rank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
@@ -113,11 +119,21 @@ func (l *Leaderboard) GetMember(userID string) (user User, err error) {
 		return User{}, err
 	}
 
+	var info UserInfo
+	if withInfo {
+		userInfo, err := l.GetMemberInfo(userID)
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return User{}, err
+		}
+
+		info = userInfo
+	}
+
 	user = User{
 		UserID: userID,
 		Score:  score,
 		Rank:   rank,
-		Info:   nil,
+		Info:   info,
 	}
 
 	return
@@ -144,8 +160,26 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 	return user, nil
 }
 
-func (l *Leaderboard) UpsertMemberInfo(info UserInfo) (updatedInfo UserInfo, err error) {
-	return
+func (l *Leaderboard) GetMemberInfo(userID string) (info UserInfo, err error) {
+	info.UserID = userID
+	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
+	if err != nil {
+		return UserInfo{}, err
+	}
+
+	if err := json.Unmarshal([]byte(stringifiedData), &info.Data); err != nil {
+		return UserInfo{}, err
+	}
+
+	return info, nil
+}
+
+func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
+	if _, err := l.redisCli.HSet(ctx, info.UserID, info.Data).Result(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Returns the rank of member in the sorted set stored at key,
@@ -167,7 +201,7 @@ func updateMemberRank(redisCli *redis.Client, leaderboardName, userID string) (r
 		return 0, err
 	}
 
-	return int(res)+1, nil
+	return int(res) + 1, nil
 }
 
 func getMemberScore(redisCli *redis.Client, leaderboardName, userID string) (score int, err error) {
