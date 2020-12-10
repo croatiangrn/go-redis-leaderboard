@@ -105,6 +105,23 @@ func (l *Leaderboard) UpsertMember(userID string, score int) (user User, err err
 }
 
 func (l *Leaderboard) GetMember(userID string) (user User, err error) {
+	rank, err := l.redisCli.ZRevRank(ctx, l.leaderboardName, userID).Result()
+	if err != nil {
+		return User{}, err
+	}
+
+	score, err := l.redisCli.ZScore(ctx, l.leaderboardName, userID).Result()
+	if err != nil {
+		return User{}, err
+	}
+
+	user = User{
+		UserID: userID,
+		Score:  int(score),
+		Rank:   int(rank),
+		Info:   nil,
+	}
+
 	return
 }
 
