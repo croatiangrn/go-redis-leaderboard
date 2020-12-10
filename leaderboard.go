@@ -82,7 +82,6 @@ func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, 
 			UserID: userID,
 			Score:  currentScore,
 			Rank:   currentRank,
-			Info:   nil,
 		}
 
 		return user, nil
@@ -102,7 +101,6 @@ func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, 
 		UserID: userID,
 		Score:  score,
 		Rank:   rank,
-		Info:   nil,
 	}
 
 	return u, nil
@@ -154,7 +152,6 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 		UserID: userID,
 		Score:  newScore,
 		Rank:   rank,
-		Info:   nil,
 	}
 
 	return user, nil
