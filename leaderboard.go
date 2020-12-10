@@ -27,10 +27,10 @@ var allowedModes = map[string]bool{
 
 // User will be used as a leaderboard item
 type User struct {
-	UserID string   `json:"user_id"`
-	Score  int      `json:"score"`
-	Rank   int      `json:"rank"`
-	Info   UserInfo `json:"basic_info"`
+	UserID         string          `json:"user_id"`
+	Score          int             `json:"score"`
+	Rank           int             `json:"rank"`
+	AdditionalInfo json.RawMessage `json:"additional_info"`
 }
 
 // UserInfo consists of basic user info such as user id, username, avatar
@@ -124,25 +124,23 @@ func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err er
 		return User{}, err
 	}
 
-	var info UserInfo
+	var additionalInfo json.RawMessage
 	if withInfo {
-		userInfo, err := l.GetMemberInfo(userID)
+		message, err := l.GetMemberInfo(userID)
 		if err != nil {
 			if !errors.Is(err, redis.Nil) {
 				return User{}, err
 			}
-
-			userInfo.UserID = userID
 		}
 
-		info = userInfo
+		additionalInfo = message
 	}
 
 	user = User{
-		UserID: userID,
-		Score:  score,
-		Rank:   rank,
-		Info:   info,
+		UserID:         userID,
+		Score:          score,
+		Rank:           rank,
+		AdditionalInfo: additionalInfo,
 	}
 
 	return
@@ -168,26 +166,36 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 	return user, nil
 }
 
-func (l *Leaderboard) GetMemberInfo(userID string) (info UserInfo, err error) {
+func (l *Leaderboard) GetMemberInfo(userID string) (message json.RawMessage, err error) {
 	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
 	if err != nil {
-		return UserInfo{}, err
+		return nil, err
 	}
 
-	if err := json.Unmarshal([]byte(stringifiedData), &info); err != nil {
-		return UserInfo{}, err
+	if err := json.Unmarshal([]byte(stringifiedData), &message); err != nil {
+		return nil, err
 	}
 
-	return info, nil
+	return message, nil
 }
 
-func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
-	data, err := json.Marshal(&info)
+type AdditionalUserInfo json.RawMessage
+
+func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *AdditionalUserInfo) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
+}
+
+func (l *Leaderboard) UpsertMemberInfo(userID string, additionalData AdditionalUserInfo) error {
+	data, err := json.Marshal(&additionalData)
 	if err != nil {
 		return err
 	}
 
-	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, info.UserID, string(data)).Result(); err != nil {
+	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, userID, string(data)).Result(); err != nil {
 		return err
 	}
 
