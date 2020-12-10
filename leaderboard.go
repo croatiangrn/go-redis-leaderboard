@@ -174,12 +174,7 @@ func (a *AdditionalUserInfo) UnmarshalBinary(data []byte) error {
 }*/
 
 func (l *Leaderboard) UpsertMemberInfo(userID string, additionalData AdditionalUserInfo) error {
-	data, err := json.Marshal(&additionalData)
-	if err != nil {
-		return err
-	}
-
-	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, userID, string(data)).Result(); err != nil {
+	if _, err := l.redisCli.HSet(ctx, l.userInfoHashName, userID, additionalData).Result(); err != nil {
 		return err
 	}
 
