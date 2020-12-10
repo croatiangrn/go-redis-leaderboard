@@ -39,13 +39,13 @@ type UserInfo struct {
 	Data   json.RawMessage `json:"data"`
 }
 
-func (u *UserInfo) MarshalBinary() ([]byte, error) {
+/*func (u *UserInfo) MarshalBinary() ([]byte, error) {
 	return json.Marshal(u)
 }
 
 func (u *UserInfo) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, u)
-}
+}*/
 
 type Leaderboard struct {
 	RedisSettings    RedisSettings
