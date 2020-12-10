@@ -174,8 +174,7 @@ func (l *Leaderboard) GetMemberInfo(userID string) (bytes []byte, err error) {
 type AdditionalUserInfo json.RawMessage
 
 func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
-	data, err := json.Marshal(a)
-	return data, err
+	return json.Marshal(a)
 }
 
 func (a *AdditionalUserInfo) UnmarshalBinary(data []byte) error {
