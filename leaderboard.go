@@ -61,7 +61,7 @@ func NewLeaderboard(redisSettings RedisSettings, mode, redisLeaderboardNameKey s
 // InsertMember inserts member to leaderboard if the member doesn't exist
 func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, err error) {
 	currentRank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return User{}, err
 	}
 
