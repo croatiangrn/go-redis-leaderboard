@@ -41,6 +41,14 @@ type UserInfo struct {
 	Data   json.RawMessage `json:"data"`
 }
 
+func (u *UserInfo) MarshalBinary() ([]byte, error) {
+	return json.Marshal(u)
+}
+
+func (u *UserInfo) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, u)
+}
+
 type Leaderboard struct {
 	RedisSettings    RedisSettings
 	mode             string
@@ -162,13 +170,12 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 }
 
 func (l *Leaderboard) GetMemberInfo(userID string) (info UserInfo, err error) {
-	info.UserID = userID
 	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
 	if err != nil {
 		return UserInfo{}, err
 	}
 
-	if err := json.Unmarshal([]byte(stringifiedData), &info.Data); err != nil {
+	if err := json.Unmarshal([]byte(stringifiedData), &info); err != nil {
 		return UserInfo{}, err
 	}
 
@@ -176,7 +183,7 @@ func (l *Leaderboard) GetMemberInfo(userID string) (info UserInfo, err error) {
 }
 
 func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
-	if _, err := l.redisCli.HSet(ctx, info.UserID, info.Data).Result(); err != nil {
+	if _, err := l.redisCli.HSet(ctx, info.UserID, &info).Result(); err != nil {
 		return err
 	}
 
