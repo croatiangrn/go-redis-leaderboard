@@ -54,14 +54,14 @@ type Leaderboard struct {
 // IMPORTANT: ``leaderboardName`` and ``uniqueIdentifier`` must be unique project/app wide!
 //
 // uniqueIdentifier is something like table name that will be used to store user info.
-func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, uniqueIdentifier string) (*Leaderboard, error) {
+func NewLeaderboard(redisSettings RedisSettings, mode, leaderboardName, userInfoStorageHash string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
 	if _, ok := allowedModes[mode]; !ok {
 		mode = DevMode
 	}
 
 	// Leaderboard naming convention: "go_leaderboard-<mode>-<appID>-<eventType>-<metaData>"
-	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: leaderboardName, userInfoHashName: uniqueIdentifier}, nil
+	return &Leaderboard{RedisSettings: redisSettings, redisCli: redisConn, leaderboardName: leaderboardName, userInfoHashName: userInfoStorageHash}, nil
 }
 
 // InsertMember inserts member to leaderboard if the member doesn't exist
