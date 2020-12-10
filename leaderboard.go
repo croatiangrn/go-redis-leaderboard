@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-redis/redis/v8"
 	"math"
 	"strconv"
@@ -324,7 +323,7 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset i
 		return nil, err
 	}
 
-	users := make([]User, len(values))
+	var users []User
 
 	for i := range values {
 		userID := values[i].Member.(string)
@@ -349,7 +348,9 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset i
 		users = append(users, user)
 	}
 
-	spew.Dump(users)
+	if len(users) == 0 {
+		users = []User{}
+	}
 
 	return users, nil
 }
