@@ -2,9 +2,11 @@ package go_redis_leaderboard
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/go-redis/redis/v8"
+	"strconv"
 )
 
 const (
@@ -154,13 +156,19 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 	return user, nil
 }
 
-func (l *Leaderboard) GetMemberInfo(userID string) (stringifiedData string, err error) {
-	stringifiedData, err = l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
+func (l *Leaderboard) GetMemberInfo(userID string) (bytes []byte, err error) {
+	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return stringifiedData, nil
+	unquotedText, _ := 	strconv.Unquote(stringifiedData)
+	raw, err := base64.StdEncoding.DecodeString(unquotedText)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw, nil
 }
 
 type AdditionalUserInfo json.RawMessage
