@@ -18,9 +18,10 @@ const (
 var ctx = context.Background()
 
 var (
-	ErrAppIDEmpty     = errors.New("leaderboard: empty app id")
-	ErrEventTypeEmpty = errors.New("leaderboard: empty event type")
-	ErrMetadataEmpty  = errors.New("leaderboard: metadata empty")
+	ErrAppIDEmpty                       = errors.New("leaderboard: empty app id")
+	ErrEventTypeEmpty                   = errors.New("leaderboard: empty event type")
+	ErrMetadataEmpty                    = errors.New("leaderboard: metadata empty")
+	ErrIncrementByMustBePozitiveInteger = errors.New("leaderboard: incrementBy must be positive integer")
 )
 
 var allowedModes = map[string]bool{
@@ -52,7 +53,6 @@ type Leaderboard struct {
 	redisCli        *redis.Client
 	leaderboardName string
 }
-
 
 func NewLeaderboard(redisSettings RedisSettings, appID, eventType, metaData, mode, redisLeaderboardNameKey string) (*Leaderboard, error) {
 	redisConn := connectToRedis(redisSettings.Host, redisSettings.Password, redisSettings.DB)
@@ -105,30 +105,79 @@ func (l *Leaderboard) UpsertMember(userID string, score int) (user User, err err
 }
 
 func (l *Leaderboard) GetMember(userID string) (user User, err error) {
-	rank, err := l.redisCli.ZRevRank(ctx, l.leaderboardName, userID).Result()
+	rank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
 	}
 
-	score, err := l.redisCli.ZScore(ctx, l.leaderboardName, userID).Result()
+	score, err := getMemberScore(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
 	}
 
 	user = User{
 		UserID: userID,
-		Score:  int(score),
-		Rank:   int(rank),
+		Score:  score,
+		Rank:   rank,
 		Info:   nil,
 	}
 
 	return
 }
 
-func (l *Leaderboard) IncrementMemberScore(userID string, score int) (user User, err error) {
-	return
+func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user User, err error) {
+	rank, err := getMemberRank(l.redisCli, l.leaderboardName, userID)
+	if err != nil {
+		return User{}, err
+	}
+
+	newScore, err := incrementMemberScore(l.redisCli, l.leaderboardName, userID, incrementBy)
+	if err != nil {
+		return User{}, err
+	}
+
+	user = User{
+		UserID: userID,
+		Score:  newScore,
+		Rank:   rank,
+		Info:   nil,
+	}
+
+	return user, nil
 }
 
 func (l *Leaderboard) UpsertMemberInfo(info UserInfo) (updatedInfo UserInfo, err error) {
 	return
+}
+
+// Returns the rank of member in the sorted set stored at key, with the scores ordered from high to low.
+func getMemberRank(redisCli *redis.Client, leaderboardName, userID string) (rank int, err error) {
+	rankInt64, err := redisCli.ZRevRank(ctx, leaderboardName, userID).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(rankInt64) + 1, nil
+}
+
+func getMemberScore(redisCli *redis.Client, leaderboardName, userID string) (score int, err error) {
+	floatScore, err := redisCli.ZScore(ctx, leaderboardName, userID).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(floatScore), nil
+}
+
+func incrementMemberScore(redisCli *redis.Client, leaderboardName, userID string, incrementBy int) (newScore int, err error) {
+	if incrementBy < 0 {
+		return 0, ErrIncrementByMustBePozitiveInteger
+	}
+
+	res, err := redisCli.ZIncrBy(ctx, leaderboardName, float64(incrementBy), userID).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(res), nil
 }
