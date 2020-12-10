@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-redis/redis/v8"
 	"math"
 	"strconv"
@@ -325,6 +324,28 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, pageSize int,
 		return nil, err
 	}
 
-	fmt.Println(values)
+	for i := range values {
+		userID := values[i].Member.(string)
+
+		rank, err := getMemberRank(redisCli, leaderboard, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		score, err := getMemberScore(redisCli, leaderboard, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		user := User{
+			UserID:         userID,
+			Score:          score,
+			Rank:           rank,
+			AdditionalInfo: nil,
+		}
+
+		users = append(users, user)
+	}
+
 	return users, nil
 }
