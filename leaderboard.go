@@ -33,20 +33,6 @@ type User struct {
 	AdditionalInfo json.RawMessage `json:"additional_info"`
 }
 
-// UserInfo consists of basic user info such as user id, username, avatar
-type UserInfo struct {
-	UserID string          `json:"user_id"`
-	Data   json.RawMessage `json:"data"`
-}
-
-/*func (u *UserInfo) MarshalBinary() ([]byte, error) {
-	return json.Marshal(u)
-}
-
-func (u *UserInfo) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, u)
-}*/
-
 type Leaderboard struct {
 	RedisSettings    RedisSettings
 	mode             string
@@ -179,13 +165,13 @@ func (l *Leaderboard) GetMemberInfo(userID string) (stringifiedData string, err 
 
 type AdditionalUserInfo json.RawMessage
 
-func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
+/*func (a *AdditionalUserInfo) MarshalBinary() ([]byte, error) {
 	return json.Marshal(a)
 }
 
 func (a *AdditionalUserInfo) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, a)
-}
+}*/
 
 func (l *Leaderboard) UpsertMemberInfo(userID string, additionalData AdditionalUserInfo) error {
 	data, err := json.Marshal(&additionalData)
