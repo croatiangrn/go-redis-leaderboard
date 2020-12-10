@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -187,6 +188,9 @@ func (l *Leaderboard) UpsertMemberInfo(info UserInfo) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("USER ID ::: ", info.UserID)
+	fmt.Println("DATA ::: ", string(data))
 
 	if _, err := l.redisCli.HSet(ctx, info.UserID, string(data)).Result(); err != nil {
 		return err
