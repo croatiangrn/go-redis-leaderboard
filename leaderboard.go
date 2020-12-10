@@ -124,7 +124,7 @@ func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err er
 			if !errors.Is(err, redis.Nil) {
 				return User{}, err
 			}
-		
+
 			userInfo.UserID = userID
 		}
 
