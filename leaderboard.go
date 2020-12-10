@@ -182,18 +182,7 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 }
 
 func (l *Leaderboard) GetMemberInfo(userID string) (bytes []byte, err error) {
-	stringifiedData, err := l.redisCli.HGet(ctx, l.userInfoHashName, userID).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	unquotedText, _ := strconv.Unquote(stringifiedData)
-	raw, err := base64.StdEncoding.DecodeString(unquotedText)
-	if err != nil {
-		return nil, err
-	}
-
-	return raw, nil
+	return getMemberInfo(l.redisCli, l.userInfoHashName, userID)
 }
 
 type AdditionalUserInfo json.RawMessage
@@ -256,7 +245,7 @@ func (l *Leaderboard) GetLeaders(page int) ([]User, error) {
 	}
 	endOffset := (startOffset + l.PageSize) - 1
 
-	return getMembersByRange(l.redisCli, l.leaderboardName, startOffset, endOffset)
+	return getMembersByRange(l.redisCli, l.leaderboardName, l.userInfoHashName, startOffset, endOffset)
 }
 
 // Returns the rank of member in the sorted set stored at key,
@@ -317,7 +306,7 @@ func incrementMemberScore(redisCli *redis.Client, leaderboardName, userID string
 	return int(res), nil
 }
 
-func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset int, endOffset int) ([]User, error) {
+func getMembersByRange(redisCli *redis.Client, leaderboard, userInfoHashName string, startOffset int, endOffset int) ([]User, error) {
 	values, err := redisCli.ZRevRangeWithScores(ctx, leaderboard, int64(startOffset), int64(endOffset)).Result()
 	if err != nil {
 		return nil, err
@@ -338,11 +327,16 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset i
 			return nil, err
 		}
 
+		additionalInfo, err := getMemberInfo(redisCli, userInfoHashName, userID)
+		if err != nil {
+			return nil, err
+		}
+
 		user := User{
 			UserID:         userID,
 			Score:          score,
 			Rank:           rank,
-			AdditionalInfo: nil,
+			AdditionalInfo: additionalInfo,
 		}
 
 		users = append(users, user)
@@ -353,4 +347,19 @@ func getMembersByRange(redisCli *redis.Client, leaderboard string, startOffset i
 	}
 
 	return users, nil
+}
+
+func getMemberInfo(redisCli *redis.Client, userInfoHashName, userID string) ([]byte, error) {
+	stringifiedData, err := redisCli.HGet(ctx, userInfoHashName, userID).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	unquotedText, _ := strconv.Unquote(stringifiedData)
+	raw, err := base64.StdEncoding.DecodeString(unquotedText)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw, nil
 }
