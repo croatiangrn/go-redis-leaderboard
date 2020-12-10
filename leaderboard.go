@@ -120,10 +120,8 @@ func (l *Leaderboard) GetMember(userID string, withInfo bool) (user User, err er
 				return User{}, err
 			}
 		}
-
-		if err = json.Unmarshal([]byte(message), &additionalInfo); err != nil {
-			return User{}, err
-		}
+		
+		additionalInfo = message
 	}
 
 	user = User{
