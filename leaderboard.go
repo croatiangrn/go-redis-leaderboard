@@ -87,7 +87,7 @@ func (l *Leaderboard) FirstOrInsertMember(userID string, score int) (user User, 
 		return User{}, err
 	}
 
-	rank, err := insertMemberRank(l.redisCli, l.leaderboardName, userID)
+	rank, err := updateMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
 	}
@@ -129,7 +129,7 @@ func (l *Leaderboard) IncrementMemberScore(userID string, incrementBy int) (user
 		return User{}, err
 	}
 
-	rank, err := insertMemberRank(l.redisCli, l.leaderboardName, userID)
+	rank, err := updateMemberRank(l.redisCli, l.leaderboardName, userID)
 	if err != nil {
 		return User{}, err
 	}
@@ -159,7 +159,7 @@ func getMemberRank(redisCli *redis.Client, leaderboardName, userID string) (rank
 	return int(rankInt64) + 1, nil
 }
 
-func insertMemberRank(redisCli *redis.Client, leaderboardName, userID string) (rank int, err error) {
+func updateMemberRank(redisCli *redis.Client, leaderboardName, userID string) (rank int, err error) {
 	// Returns the rank of member in the sorted set stored at key, with the scores ordered from high to low.
 	// The rank (or index) is 0-based, which means that the member with the highest score has rank 0.
 	res, err := redisCli.ZRevRank(ctx, leaderboardName, userID).Result()
